@@ -321,6 +321,7 @@ static uint64_t globalConfigTime = GetCurrentConfigTime();
 
 // Enable.*
 static bool EnableGlobal;
+static bool EnableAutoscale;
 static bool Enable5M, Enable10M, Enable15M, Enable20M, Enable25M, Enable40M;
 static bool Enable5MHeroic, Enable10MHeroic, Enable25MHeroic;
 static bool EnableOtherNormal, EnableOtherHeroic;
@@ -2269,7 +2270,15 @@ void UpdateMapPlayerStats(Map* map)
     if (mapDSInfo->overridePlayerCount > 0)
         adjustedPlayerCount = mapDSInfo->overridePlayerCount;
     else
+    {
+        if (EnableAutoscale == false)
+        {
+            // If there is no override and there is no autoscale, don't actually do anything
+            mapDSInfo->adjustedPlayerCount = map->ToInstanceMap()->GetMaxPlayers();
+            return;
+        }
         adjustedPlayerCount += PlayerCountDifficultyOffset;
+    }
 
     // store the adjusted player count in the map's info
     mapDSInfo->adjustedPlayerCount = adjustedPlayerCount;
@@ -2350,7 +2359,6 @@ void AddPlayerToMap(Map* map, Player* player)
 {
     // get map data
     DungeonScaleMapInfo *mapDSInfo=map->CustomData.GetDefault<DungeonScaleMapInfo>("DungeonScaleMapInfo");
-
 
     if (!player)
     {
@@ -2708,6 +2716,8 @@ class DungeonScale_WorldScript : public WorldScript
         // DungeonScale.Enable.*
         EnableGlobal = sConfigMgr->GetOption<bool>("DungeonScale.Enable.Global", sConfigMgr->GetOption<bool>("DungeonScale.enable", 1, false)); // `DungeonScale.enable` for backwards compatibility
 
+        EnableAutoscale = sConfigMgr->GetOption<bool>("DungeonScale.Enable.Autoscale", true, true);
+
         Enable5M = sConfigMgr->GetOption<bool>("DungeonScale.Enable.5M", sConfigMgr->GetOption<bool>("DungeonScale.enable", 1, false));
         Enable10M = sConfigMgr->GetOption<bool>("DungeonScale.Enable.10M", sConfigMgr->GetOption<bool>("DungeonScale.enable", 1, false));
         Enable15M = sConfigMgr->GetOption<bool>("DungeonScale.Enable.15M", sConfigMgr->GetOption<bool>("DungeonScale.enable", 1, false));
@@ -3003,31 +3013,6 @@ class DungeonScale_PlayerScript : public PlayerScript
             if (EnableGlobal && Announcement) {
                 ChatHandler(Player->GetSession()).SendSysMessage("This server is running the |cff4CFF00DungeonScale |rmodule.");
             }
-        }
-
-        virtual void OnPlayerLevelChanged(Player* player, uint8 oldlevel) override
-        {
-            LOG_DEBUG("module.DungeonScale", "DungeonScale:: {}", SPACER);
-
-            LOG_DEBUG("module.DungeonScale", "DungeonScale_PlayerScript::OnLevelChanged: {} has leveled ({}->{})", player->GetName(), oldlevel, player->GetLevel());
-            if (!player || player->IsGameMaster())
-            {
-                return;
-            }
-
-            Map* map = player->GetMap();
-
-            if (!map || !map->IsDungeon())
-            {
-                return;
-            }
-
-            // update the map's player stats
-            UpdateMapPlayerStats(map);
-
-            // schedule all creatures for an update
-            DungeonScaleMapInfo *mapDSInfo=map->CustomData.GetDefault<DungeonScaleMapInfo>("DungeonScaleMapInfo");
-            mapDSInfo->mapConfigTime = GetCurrentConfigTime();
         }
 
         void OnPlayerGiveXP(Player* player, uint32& amount, Unit* victim, uint8 /*xpSource*/) override

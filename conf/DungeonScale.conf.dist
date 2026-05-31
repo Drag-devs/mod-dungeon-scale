@@ -29,11 +29,16 @@ DungeonScale.PlayerChangeNotify=1
 #
 # Enable / Disable Settings
 #
-#     DungeonScale.Enable
+#     DungeonScale.Enable.Global
 #        Enable/Disable all features globally. If this setting is off, all settings after this one do not take effect.
 #        Default:     1 (1 = ON, 0 = OFF)
 #
-#     DungeonScale.Enabled.*
+#     DungeonScale.Autoscale
+#        Enable/Disable autoscaling on dungeon entry. Note that manually setting the dungeon scale will lock this
+#          for that existing instance even if this is set to true.
+#        Default:     True
+#
+#     DungeonScale.Enable.*
 #        Enable/Disable all features for each instance size and difficulty.
 #        If an instance size is set to 0 here, none of the other settings for that instance size will take effect.
 #        Default:     1 (1 = ON, 0 = OFF)
@@ -48,6 +53,8 @@ DungeonScale.PlayerChangeNotify=1
 ###################################################################################################
 
 DungeonScale.Enable.Global=1
+
+DungeonScale.Enable.Autoscale = True
 
 DungeonScale.Enable.5M=1
 DungeonScale.Enable.10M=1
