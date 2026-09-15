@@ -315,6 +315,8 @@ static bool RewardScalingLoot, RewardScalingLootBOPAlwaysDropException;
 static std::list<uint32> RewardScalingExceptionItemIDs;
 static bool RewardScalingExemptContainers;
 static bool RewardScalingExemptSkinning;
+static bool RewardScalingExemptBosses;
+static uint32 RewardScalingLootMinQualityAlwaysDrop;
 
 // Track the initial config time
 static uint64_t globalConfigTime = GetCurrentConfigTime();
@@ -2993,6 +2995,9 @@ class DungeonScale_WorldScript : public WorldScript
         RewardScalingLootBOPAlwaysDropException = sConfigMgr->GetOption<bool>("DungeonScale.RewardScaling.Loot.BOPAlwaysDropException", true);
         RewardScalingExemptContainers = sConfigMgr->GetOption<bool>("DungeonScale.RewardScaling.Loot.ExemptContainers", true);
         RewardScalingExemptSkinning = sConfigMgr->GetOption<bool>("DungeonScale.RewardScaling.Loot.ExemptSkinning", true);
+        RewardScalingExemptBosses = sConfigMgr->GetOption<bool>("DungeonScale.RewardScaling.Loot.ExemptBosses", true);
+        // 0 disables the quality floor; 1..7 map to ITEM_QUALITY_COMMON..ITEM_QUALITY_HEIRLOOM
+        RewardScalingLootMinQualityAlwaysDrop = sConfigMgr->GetOption<uint32>("DungeonScale.RewardScaling.Loot.MinQualityAlwaysDrop", ITEM_QUALITY_RARE);
 
         // Announcement
         Announcement = sConfigMgr->GetOption<bool>("DungeonScaleAnnounce.enable", true);
@@ -5744,6 +5749,13 @@ public:
         if (lootStoreItem->needs_quest == true)
             return true;
 
+        // Reference rows are not items. Their itemid is a reference_loot_template
+        // entry that happens to collide with unrelated item ids, so scaling them
+        // here would randomly drop entire boss loot groups. The real items inside
+        // the referenced template are rolled individually and scaled there.
+        if (lootStoreItem->reference != 0)
+            return true;
+
         // Skip if exception dungeon
         if (isIntInList(disabledDungeonIds, player->GetMap()->GetId()) == true)
             return true;
@@ -5765,6 +5777,16 @@ public:
         // Always return the loot if it's a BOP drop and configured to do so
         if (RewardScalingLootBOPAlwaysDropException == true && itemTemplate->Bonding == BIND_WHEN_PICKED_UP)
             return true;
+
+        // Quality floor: covers servers where BOP items were converted to BOE in item_template
+        if (RewardScalingLootMinQualityAlwaysDrop > 0 && itemTemplate->Quality >= RewardScalingLootMinQualityAlwaysDrop)
+            return true;
+
+        // Boss and boss-summon corpses always drop their full loot table
+        if (RewardScalingExemptBosses == true && loot.sourceWorldObjectGUID.IsCreatureOrVehicle())
+            if (Creature* sourceCreature = player->GetMap()->GetCreature(loot.sourceWorldObjectGUID))
+                if (isBossOrBossSummon(sourceCreature))
+                    return true;
 
         // Skip if exception itemID
         if (isIntInList(RewardScalingExceptionItemIDs, itemTemplate->ItemId) == true)
