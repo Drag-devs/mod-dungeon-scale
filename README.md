@@ -6,6 +6,8 @@ This module is intended to allow dungeon scaling based on number of players (sim
 
 **NOTE 2:** This is customized from the source mode called "AutoBalance" found here: https://github.com/azerothcore/mod-autobalance
 
+**NOTE 3:** This has been modified to work on servers where bind on pickup items have been converted to bind on equip.
+
 ## In-game Commands
 | Command | Permission | Description |
 | :------ | :--------- | :---------- |
